@@ -1,5 +1,4 @@
 import requests
-import time
 from flask import Flask
 
 app = Flask(__name__)
@@ -12,7 +11,8 @@ def hello_world():
 
 @app.route('/trace/<src>/<dst>')
 def trace(src, dst):
-    r = requests.post('http://requestb.in/z8yougz8', data={"ts": time.time()})
+    print 'http://' + src + "/trac/" + dst
+    r = requests.get('http://' + src + "/trac/" + dst)
     return 'Hello World!'
 
 
