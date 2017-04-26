@@ -6,6 +6,8 @@ import json
 
 app = Flask(__name__)
 
+measurements = {}
+
 
 def cleanup(src_ip, dst_ip, measurement_id):
     try:
@@ -16,8 +18,11 @@ def cleanup(src_ip, dst_ip, measurement_id):
         return False
 
 
-@app.route('/udp/<src>/<dst>/<interval>/<measurement_type>')
-def udp(src, dst, interval, measurement_type):
+@app.route('/udp/<src>/<dst>/<interval>', methods=["POST"])
+def udp_start(src, dst, interval):
+    if src + ";" + dst in measurements:
+        return "THERE IS ALREADY A RUNNING MEASUREMENT FOR THESE HOSTS", 500
+
     measurement_id = str(uuid.uuid4())
     dst_ip = dst.split(":")[0]
     dst_port = dst.split(":")[1]
@@ -28,10 +33,8 @@ def udp(src, dst, interval, measurement_type):
         response = requests.post("http://" + dst_ip + ":5000/measurement/udp/responder/" + measurement_id +
                                  "?self_port=" + dst_port, timeout=5)
         if response.status_code != 200:
-            cleanup(src_ip, dst_ip, measurement_id)
             return "COULD NOT START LISTENING ON HOST " + dst, 500
     except:
-        cleanup(src_ip, dst_ip, measurement_id)
         return "COULD NOT START LISTENING ON HOST " + dst, 500
 
     try:
@@ -39,15 +42,32 @@ def udp(src, dst, interval, measurement_type):
                                  "?self_port=" + src_port + "&target_address=" + dst_ip + "&target_port=" + dst_port +
                                  "&interval_s=" + str(interval))
         if response.status_code != 200:
-            cleanup(src_ip, dst_ip, measurement_id)
             return "COULD NOT START BROADCASTING ON HOST " + src, 500
     except:
-        cleanup(src_ip, dst_ip, measurement_id)
         return "COULD NOT START BROADCASTING ON HOST " + src, 500
 
-    print "Created measurements"
+    measurements[src + ";" + dst] = measurement_id
+    return "MEASUREMENT SUCCESSFULLY CREATED"
 
-    time.sleep(float(interval) + 1.0)
+
+@app.route('/udp/<src>/<dst>', methods=["DELETE"])
+def udp_delete(src, dst):
+    measurement = measurements[src + ';' + dst]
+    dst_ip = dst.split(":")[0]
+    src_ip = src.split(":")[0]
+    cleanup(src_ip, dst_ip, measurement)
+    return "MEASUREMENT SUCCESSFULLY DELETED"
+
+
+@app.route('/udp/<src>/<dst>/<interval>/<measurement_type>')
+def udp(src, dst, interval, measurement_type):
+    measurement_id = str(uuid.uuid4())
+    dst_ip = dst.split(":")[0]
+    dst_port = dst.split(":")[1]
+    src_ip = src.split(":")[0]
+    src_port = src.split(":")[1]
+
+    print "Created measurements"
 
     print "Sleep ended"
 
