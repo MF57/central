@@ -18,11 +18,17 @@ def udp(src, dst, interval, measurement_type):
     requests.post("http://" + src_ip + ":5000/measurement/udp/sender/" + measurement_id + "?self_port=" + src_port
                   + "&target_address=" + dst_ip + "&target_port=" + dst_port + "&interval_s=" + str(interval))
 
-    time.sleep(interval)
+    print "Created measurements"
+
+    time.sleep(float(interval) + 1.0)
+
+    print "Sleep ended"
 
     responder_time = requests.get("http://" + dst_ip + ":5000/measurement/udp/responder/" + measurement_id)
     sender_time = requests.get("http://" + src_ip + ":5000/measurement/udp/sender/" + measurement_id)
     receiver_time = requests.get("http://" + src_ip + ":5000/measurement/udp/receiver/" + measurement_id)
+
+    print "Results Readed"
 
     requests.delete("http://" + src_ip + ":5000/measurement/udp/sender/" + measurement_id)
     requests.delete("http://" + dst_ip + ":5000/measurement/udp/responder/" + measurement_id)
