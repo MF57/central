@@ -9,15 +9,6 @@ app = Flask(__name__)
 measurements = {}
 
 
-def cleanup(src_ip, dst_ip, measurement_id):
-    try:
-        requests.delete("http://" + src_ip + ":5000/measurement/udp/sender/" + measurement_id)
-        requests.delete("http://" + dst_ip + ":5000/measurement/udp/responder/" + measurement_id)
-        return True
-    except:
-        return False
-
-
 @app.route('/udp/<src>/<dst>/<interval>', methods=["POST"])
 def udp_start(src, dst, interval):
     if src + ";" + dst in measurements:
@@ -46,56 +37,161 @@ def udp_start(src, dst, interval):
     except:
         return "COULD NOT START BROADCASTING ON HOST " + src, 500
 
-    measurements[src + ";" + dst] = measurement_id
+    measurements["udp" + ';' + src + ";" + dst] = measurement_id
     return "MEASUREMENT SUCCESSFULLY CREATED"
 
 
-@app.route('/udp/<src>/<dst>', methods=["DELETE"])
-def udp_delete(src, dst):
-    measurement = measurements[src + ';' + dst]
-    dst_ip = dst.split(":")[0]
-    src_ip = src.split(":")[0]
-    cleanup(src_ip, dst_ip, measurement)
-    return "MEASUREMENT SUCCESSFULLY DELETED"
+@app.route('/tcp/<src>/<dst>/<interval>', methods=["POST"])
+def tcp_start(src, dst, interval):
+    if src + ";" + dst in measurements:
+        return "THERE IS ALREADY A RUNNING MEASUREMENT FOR THESE HOSTS", 500
 
-
-@app.route('/udp/<src>/<dst>/<interval>/<measurement_type>')
-def udp(src, dst, interval, measurement_type):
     measurement_id = str(uuid.uuid4())
     dst_ip = dst.split(":")[0]
     dst_port = dst.split(":")[1]
     src_ip = src.split(":")[0]
     src_port = src.split(":")[1]
 
-    print "Created measurements"
+    try:
+        response = requests.post("http://" + dst_ip + ":5000/measurement/tcp/server/" + measurement_id +
+                                 "?self_port=" + dst_port, timeout=5)
+        if response.status_code != 200:
+            return "COULD NOT START LISTENING ON HOST " + dst, 500
+    except:
+        return "COULD NOT START LISTENING ON HOST " + dst, 500
 
-    print "Sleep ended"
+    try:
+        response = requests.post("http://" + src_ip + ":5000/measurement/tcp/client/" + measurement_id +
+                                 "?self_port=" + src_port + "&target_address=" + dst_ip + "&target_port=" + dst_port +
+                                 "&interval_s=" + str(interval))
+        if response.status_code != 200:
+            return "COULD NOT START BROADCASTING ON HOST " + src, 500
+    except:
+        return "COULD NOT START BROADCASTING ON HOST " + src, 500
+
+    measurements["tcp" + ';' + src + ";" + dst] = measurement_id
+    return "MEASUREMENT SUCCESSFULLY CREATED"
+
+
+@app.route('/icmp/<src>/<dst>/<interval>', methods=["POST"])
+def icmp_start(src, dst, interval):
+    if src + ";" + dst in measurements:
+        return "THERE IS ALREADY A RUNNING MEASUREMENT FOR THESE HOSTS", 500
+
+    measurement_id = str(17)
+    dst_ip = dst.split(":")[0]
+    src_ip = src.split(":")[0]
+
+    try:
+        response = requests.post("http://" + src_ip + ":5000/measurement/icmp/sender/" + measurement_id +
+                                 "?target_address=" + dst_ip + "&interval_s=" + str(interval))
+        if response.status_code != 200:
+            return "COULD NOT START BROADCASTING ON HOST " + src, 500
+    except:
+        return "COULD NOT START BROADCASTING ON HOST " + src, 500
+
+    measurements["icmp" + ';' + src + ";" + dst] = measurement_id
+    return "MEASUREMENT SUCCESSFULLY CREATED"
+
+
+###################################### DELETE  ###############################################################
+
+
+@app.route('/udp/<src>/<dst>', methods=["DELETE"])
+def udp_delete(src, dst):
+    measurement = measurements["udp" + ';' + src + ';' + dst]
+    dst_ip = dst.split(":")[0]
+    src_ip = src.split(":")[0]
+
+    if cleanup_udp(src_ip, dst_ip, measurement):
+        measurements.pop(measurement, None)
+        return "MEASUREMENT SUCCESSFULLY DELETED"
+    else:
+        return "THERE WERE ERRORS DURING DELETING MEASUREMENT", 500
+
+
+def cleanup_udp(src_ip, dst_ip, measurement_id):
+    try:
+        requests.delete("http://" + src_ip + ":5000/measurement/udp/sender/" + measurement_id)
+        requests.delete("http://" + dst_ip + ":5000/measurement/udp/responder/" + measurement_id)
+        return True
+    except:
+        return False
+
+
+@app.route('/tcp/<src>/<dst>', methods=["DELETE"])
+def tcp_delete(src, dst):
+    measurement = measurements["tcp" + ';' + src + ';' + dst]
+    dst_ip = dst.split(":")[0]
+    src_ip = src.split(":")[0]
+
+    if cleanup_tcp(src_ip, dst_ip, measurement):
+        measurements.pop(measurement, None)
+        return "MEASUREMENT SUCCESSFULLY DELETED"
+    else:
+        return "THERE WERE ERRORS DURING DELETING MEASUREMENT", 500
+
+
+def cleanup_tcp(src_ip, dst_ip, measurement_id):
+    try:
+        requests.delete("http://" + src_ip + ":5000/measurement/tcp/client/" + measurement_id)
+        requests.delete("http://" + dst_ip + ":5000/measurement/tcp/server/" + measurement_id)
+        return True
+    except:
+        return False
+
+
+@app.route('/icmp/<src>/<dst>', methods=["DELETE"])
+def icmp_delete(src, dst):
+    measurement = measurements["icmp" + ';' + src + ';' + dst]
+    src_ip = src.split(":")[0]
+
+    if cleanup_icmp(src_ip, measurement):
+        measurements.pop(measurement, None)
+        return "MEASUREMENT SUCCESSFULLY DELETED"
+    else:
+        return "THERE WERE ERRORS DURING DELETING MEASUREMENT", 500
+
+
+def cleanup_icmp(src_ip, measurement_id):
+    try:
+        requests.delete("http://" + src_ip + ":5000/measurement/icmp/sender/" + measurement_id)
+        return True
+    except:
+        return False
+
+
+@app.route('/udp/<src>/<dst>/<interval>/<measurement_type>')
+def udp(src, dst, interval, measurement_type):
+    measurement_id = str(uuid.uuid4())
+    dst_ip = dst.split(":")[0]
+    src_ip = src.split(":")[0]
 
     try:
         responder_response = requests.get("http://" + dst_ip + ":5000/measurement/udp/responder/" + measurement_id)
         if responder_response.status_code != 200:
-            cleanup(src_ip, dst_ip, measurement_id)
+            cleanup_udp(src_ip, dst_ip, measurement_id)
             return "COULD NOT RETRIEVE RESPONDER TIME FROM HOST " + dst, 500
     except:
-        cleanup(src_ip, dst_ip, measurement_id)
+        cleanup_udp(src_ip, dst_ip, measurement_id)
         return "COULD NOT RETRIEVE RESPONDER TIME FROM HOST " + dst, 500
 
     try:
         sender_response = requests.get("http://" + src_ip + ":5000/measurement/udp/sender/" + measurement_id)
         if sender_response.status_code != 200:
-            cleanup(src_ip, dst_ip, measurement_id)
+            cleanup_udp(src_ip, dst_ip, measurement_id)
             return "COULD NOT RETRIEVE SENDER TIME FROM HOST " + src, 500
     except:
-        cleanup(src_ip, dst_ip, measurement_id)
+        cleanup_udp(src_ip, dst_ip, measurement_id)
         return "COULD NOT RETRIEVE SENDER TIME FROM HOST " + src, 500
 
     try:
         receiver_response = requests.get("http://" + src_ip + ":5000/measurement/udp/receiver/" + measurement_id)
         if receiver_response.status_code != 200:
-            cleanup(src_ip, dst_ip, measurement_id)
+            cleanup_udp(src_ip, dst_ip, measurement_id)
             return "COULD NOT RETRIEVE RECEIVER TIME FROM HOST " + src, 500
     except:
-        cleanup(src_ip, dst_ip, measurement_id)
+        cleanup_udp(src_ip, dst_ip, measurement_id)
         return "COULD NOT RETRIEVE RECEIVER TIME FROM HOST " + src, 500
 
     try:
@@ -105,7 +201,7 @@ def udp(src, dst, interval, measurement_type):
 
         print "Results Readed"
 
-        cleanup(src_ip, dst_ip, measurement_id)
+        cleanup_udp(src_ip, dst_ip, measurement_id)
 
         print "Measurements Deleted"
 
@@ -118,7 +214,7 @@ def udp(src, dst, interval, measurement_type):
 
         return 'NOT SUPPORTED MEASUREMENT TYPE', 500
     except:
-        cleanup(src_ip, dst_ip, measurement_id)
+        cleanup_udp(src_ip, dst_ip, measurement_id)
         return "COULD NOT COMPUTE TIME FROM HOSTS RESPONSES", 500
 
 
