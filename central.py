@@ -173,7 +173,9 @@ def cleanup_icmp(src_ip, measurement_id):
         return False
 
 
-@app.route('/udp/<src>/<dst>/<measurement_type>/measurement_section')
+############################################################# GET   ###################################################
+
+@app.route('/udp/<src>/<dst>/<measurement_type>/<measurement_section>', methods=["GET"])
 def udp(src, dst, measurement_type, measurement_section):
     global measurements
     measurement_id = measurements["udp" + ';' + src + ';' + dst]
@@ -212,25 +214,109 @@ def udp(src, dst, measurement_type, measurement_section):
         sender_time = json.loads(sender_response.text)
         receiver_time = json.loads(receiver_response.text)
 
+        if measurement_section == "one_way_source_target":
+            return handleResultData(measurement_type, responder_time, sender_time), 200
+        elif measurement_section == "one_way_target_source":
+            return handleResultData(measurement_type, receiver_time, responder_time), 200
+        elif measurement_section == "two_way":
+            return handleResultData(measurement_type, receiver_time, sender_time), 200
 
-        return 'NOT SUPPORTED MEASUREMENT TYPE', 200
+        return 'NOT SUPPORTED MEASUREMENT TYPE', 500
     except:
         cleanup_udp(src_ip, dst_ip, measurement_id)
         return "COULD NOT COMPUTE TIME FROM HOSTS RESPONSES", 500
 
 
-@app.route('/tcp/<src>/<dst>')
-def tcp(src, dst):
-    print 'http://' + src + "/trac/" + dst
-    r = requests.get('http://' + src + "/trac/" + dst)
-    return 'Hello World!'
+@app.route('/tcp/<src>/<dst>/<measurement_type>', methods=["GET"])
+def tcp(src, dst, measurement_type):
+    global measurements
+    measurement_id = measurements["tcp" + ';' + src + ';' + dst]
+    dst_ip = dst.split(":")[0]
+    src_ip = src.split(":")[0]
+
+    try:
+        server_response = requests.get("http://" + dst_ip + ":5000/measurement/tcp/server/" + measurement_id)
+        if server_response.status_code != 200:
+            cleanup_tcp(src_ip, dst_ip, measurement_id)
+            return "COULD NOT RETRIEVE SERVER TIME FROM HOST " + dst, 500
+    except:
+        cleanup_tcp(src_ip, dst_ip, measurement_id)
+        return "COULD NOT RETRIEVE RESPONDER TIME FROM HOST " + dst, 500
+
+    try:
+        client_response = requests.get("http://" + src_ip + ":5000/measurement/tcp/client/" + measurement_id)
+        if client_response.status_code != 200:
+            cleanup_tcp(src_ip, dst_ip, measurement_id)
+            return "COULD NOT RETRIEVE SENDER TIME FROM HOST " + src, 500
+    except:
+        cleanup_tcp(src_ip, dst_ip, measurement_id)
+        return "COULD NOT RETRIEVE SENDER TIME FROM HOST " + src, 500
+
+    try:
+        server_time = json.loads(server_response.text)
+        client_time = json.loads(client_response.text)
+        return handleResultData(measurement_type, server_time, client_time), 200
+
+    except:
+        cleanup_tcp(src_ip, dst_ip, measurement_id)
+        return "COULD NOT COMPUTE TIME FROM HOSTS RESPONSES", 500
 
 
-@app.route('/icmp/<src>/<dst>')
-def icmp(src, dst):
-    print 'http://' + src + "/trac/" + dst
-    r = requests.get('http://' + src + "/trac/" + dst)
-    return 'Hello World!'
+@app.route('/icmp/<src>/<dst>/<measurement_type>/<measurement_section>', methods=["GET"])
+def icmp(src, dst, measurement_type, measurement_section):
+    global measurements
+    measurement_id = measurements["icmp" + ';' + src + ';' + dst]
+    dst_ip = dst.split(":")[0]
+    src_ip = src.split(":")[0]
+
+    try:
+        responder_response = requests.get("http://" + dst_ip + ":5000/measurement/icmp/responder/" + measurement_id)
+        if responder_response.status_code != 200:
+            cleanup_udp(src_ip, dst_ip, measurement_id)
+            return "COULD NOT RETRIEVE RESPONDER TIME FROM HOST " + dst, 500
+    except:
+        cleanup_udp(src_ip, dst_ip, measurement_id)
+        return "COULD NOT RETRIEVE RESPONDER TIME FROM HOST " + dst, 500
+
+    try:
+        sender_response = requests.get("http://" + src_ip + ":5000/measurement/icmp/sender/" + measurement_id)
+        if sender_response.status_code != 200:
+            cleanup_udp(src_ip, dst_ip, measurement_id)
+            return "COULD NOT RETRIEVE SENDER TIME FROM HOST " + src, 500
+    except:
+        cleanup_udp(src_ip, dst_ip, measurement_id)
+        return "COULD NOT RETRIEVE SENDER TIME FROM HOST " + src, 500
+
+    try:
+        receiver_response = requests.get("http://" + src_ip + ":5000/measurement/icmp/receiver/" + measurement_id)
+        if receiver_response.status_code != 200:
+            cleanup_udp(src_ip, dst_ip, measurement_id)
+            return "COULD NOT RETRIEVE RECEIVER TIME FROM HOST " + src, 500
+    except:
+        cleanup_udp(src_ip, dst_ip, measurement_id)
+        return "COULD NOT RETRIEVE RECEIVER TIME FROM HOST " + src, 500
+
+    try:
+        responder_time = json.loads(responder_response.text)
+        sender_time = json.loads(sender_response.text)
+        receiver_time = json.loads(receiver_response.text)
+
+        if measurement_section == "one_way_source_target":
+            return handleResultData(measurement_type, responder_time, sender_time), 200
+        elif measurement_section == "one_way_target_source":
+            return handleResultData(measurement_type, receiver_time, responder_time), 200
+        elif measurement_section == "two_way":
+            return handleResultData(measurement_type, receiver_time, sender_time), 200
+
+        return 'NOT SUPPORTED MEASUREMENT TYPE', 500
+    except:
+        cleanup_udp(src_ip, dst_ip, measurement_id)
+        return "COULD NOT COMPUTE TIME FROM HOSTS RESPONSES", 500
+
+
+
+def handleResultData(measurement_type, leftData, rightData):
+    return "Siemaneczko"
 
 
 if __name__ == '__main__':
