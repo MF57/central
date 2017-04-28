@@ -6,15 +6,20 @@ import json
 
 app = Flask(__name__)
 
+
+#LOL xD
 measurements = {}
+icmp_counter = 0
 
 
 @app.route('/udp/<src>/<dst>/<interval>', methods=["POST"])
 def udp_start(src, dst, interval):
+    global measurements
     if src + ";" + dst in measurements:
         return "THERE IS ALREADY A RUNNING MEASUREMENT FOR THESE HOSTS", 500
 
     measurement_id = str(uuid.uuid4())
+    print measurement_id
     dst_ip = dst.split(":")[0]
     dst_port = dst.split(":")[1]
     src_ip = src.split(":")[0]
@@ -43,6 +48,7 @@ def udp_start(src, dst, interval):
 
 @app.route('/tcp/<src>/<dst>/<interval>', methods=["POST"])
 def tcp_start(src, dst, interval):
+    global measurements
     if src + ";" + dst in measurements:
         return "THERE IS ALREADY A RUNNING MEASUREMENT FOR THESE HOSTS", 500
 
@@ -75,10 +81,13 @@ def tcp_start(src, dst, interval):
 
 @app.route('/icmp/<src>/<dst>/<interval>', methods=["POST"])
 def icmp_start(src, dst, interval):
+    global measurements
+    global icmp_counter
     if src + ";" + dst in measurements:
         return "THERE IS ALREADY A RUNNING MEASUREMENT FOR THESE HOSTS", 500
 
-    measurement_id = str(17)
+    measurement_id = str(icmp_counter)
+    icmp_counter = icmp_counter+1
     dst_ip = dst.split(":")[0]
     src_ip = src.split(":")[0]
 
@@ -99,6 +108,7 @@ def icmp_start(src, dst, interval):
 
 @app.route('/udp/<src>/<dst>', methods=["DELETE"])
 def udp_delete(src, dst):
+    global measurements
     measurement = measurements["udp" + ';' + src + ';' + dst]
     dst_ip = dst.split(":")[0]
     src_ip = src.split(":")[0]
@@ -121,6 +131,7 @@ def cleanup_udp(src_ip, dst_ip, measurement_id):
 
 @app.route('/tcp/<src>/<dst>', methods=["DELETE"])
 def tcp_delete(src, dst):
+    global measurements
     measurement = measurements["tcp" + ';' + src + ';' + dst]
     dst_ip = dst.split(":")[0]
     src_ip = src.split(":")[0]
@@ -143,6 +154,7 @@ def cleanup_tcp(src_ip, dst_ip, measurement_id):
 
 @app.route('/icmp/<src>/<dst>', methods=["DELETE"])
 def icmp_delete(src, dst):
+    global measurements
     measurement = measurements["icmp" + ';' + src + ';' + dst]
     src_ip = src.split(":")[0]
 
@@ -161,9 +173,10 @@ def cleanup_icmp(src_ip, measurement_id):
         return False
 
 
-@app.route('/udp/<src>/<dst>/<interval>/<measurement_type>')
-def udp(src, dst, interval, measurement_type):
-    measurement_id = str(uuid.uuid4())
+@app.route('/udp/<src>/<dst>/<measurement_type>/measurement_section')
+def udp(src, dst, measurement_type, measurement_section):
+    global measurements
+    measurement_id = measurements["udp" + ';' + src + ';' + dst]
     dst_ip = dst.split(":")[0]
     src_ip = src.split(":")[0]
 
@@ -195,24 +208,12 @@ def udp(src, dst, interval, measurement_type):
         return "COULD NOT RETRIEVE RECEIVER TIME FROM HOST " + src, 500
 
     try:
-        responder_time = json.loads(responder_response.text)['timestamp']
-        sender_time = json.loads(sender_response.text)['timestamp']
-        receiver_time = json.loads(receiver_response.text)['timestamp']
+        responder_time = json.loads(responder_response.text)
+        sender_time = json.loads(sender_response.text)
+        receiver_time = json.loads(receiver_response.text)
 
-        print "Results Readed"
 
-        cleanup_udp(src_ip, dst_ip, measurement_id)
-
-        print "Measurements Deleted"
-
-        if measurement_type == "one_way_source_target":
-            return responder_time - sender_time, 200
-        elif measurement_type == "one_way_target_source":
-            return receiver_time - responder_time, 200
-        elif measurement_type == "two_way":
-            return receiver_time - sender_time, 200
-
-        return 'NOT SUPPORTED MEASUREMENT TYPE', 500
+        return 'NOT SUPPORTED MEASUREMENT TYPE', 200
     except:
         cleanup_udp(src_ip, dst_ip, measurement_id)
         return "COULD NOT COMPUTE TIME FROM HOSTS RESPONSES", 500
