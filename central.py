@@ -15,7 +15,7 @@ icmp_counter = 0
 @app.route('/udp/<src>/<dst>/<interval>', methods=["POST"])
 def udp_start(src, dst, interval):
     global measurements
-    if src + ";" + dst in measurements:
+    if "udp;" + src + ";" + dst in measurements:
         return "THERE IS ALREADY A RUNNING MEASUREMENT FOR THESE HOSTS", 500
 
     measurement_id = str(uuid.uuid4())
@@ -43,13 +43,14 @@ def udp_start(src, dst, interval):
         return "COULD NOT START BROADCASTING ON HOST " + src, 500
 
     measurements["udp" + ';' + src + ";" + dst] = measurement_id
+    print measurements
     return "MEASUREMENT SUCCESSFULLY CREATED"
 
 
 @app.route('/tcp/<src>/<dst>/<interval>', methods=["POST"])
 def tcp_start(src, dst, interval):
     global measurements
-    if src + ";" + dst in measurements:
+    if "tcp;" + src + ";" + dst in measurements:
         return "THERE IS ALREADY A RUNNING MEASUREMENT FOR THESE HOSTS", 500
 
     measurement_id = str(uuid.uuid4())
@@ -76,6 +77,7 @@ def tcp_start(src, dst, interval):
         return "COULD NOT START BROADCASTING ON HOST " + src, 500
 
     measurements["tcp" + ';' + src + ";" + dst] = measurement_id
+    print measurements
     return "MEASUREMENT SUCCESSFULLY CREATED"
 
 
@@ -83,7 +85,7 @@ def tcp_start(src, dst, interval):
 def icmp_start(src, dst, interval):
     global measurements
     global icmp_counter
-    if src + ";" + dst in measurements:
+    if "icmp;" + src + ";" + dst in measurements:
         return "THERE IS ALREADY A RUNNING MEASUREMENT FOR THESE HOSTS", 500
 
     measurement_id = str(icmp_counter)
@@ -100,6 +102,7 @@ def icmp_start(src, dst, interval):
         return "COULD NOT START BROADCASTING ON HOST " + src, 500
 
     measurements["icmp" + ';' + src + ";" + dst] = measurement_id
+    print measurements
     return "MEASUREMENT SUCCESSFULLY CREATED"
 
 
@@ -109,12 +112,16 @@ def icmp_start(src, dst, interval):
 @app.route('/udp/<src>/<dst>', methods=["DELETE"])
 def udp_delete(src, dst):
     global measurements
-    measurement = measurements["udp" + ';' + src + ';' + dst]
+    try:
+        measurement = measurements["udp" + ';' + src + ';' + dst]
+    except:
+        return "THERE IS NO SUCH MEASUREMENT RUNNING", 500
     dst_ip = dst.split(":")[0]
     src_ip = src.split(":")[0]
 
     if cleanup_udp(src_ip, dst_ip, measurement):
-        measurements.pop(measurement, None)
+        measurements.pop("udp" + ';' + src + ';' + dst, None)
+        print measurements
         return "MEASUREMENT SUCCESSFULLY DELETED"
     else:
         return "THERE WERE ERRORS DURING DELETING MEASUREMENT", 500
@@ -132,12 +139,16 @@ def cleanup_udp(src_ip, dst_ip, measurement_id):
 @app.route('/tcp/<src>/<dst>', methods=["DELETE"])
 def tcp_delete(src, dst):
     global measurements
-    measurement = measurements["tcp" + ';' + src + ';' + dst]
+    try:
+        measurement = measurements["tcp" + ';' + src + ';' + dst]
+    except:
+        return "THERE IS NO SUCH MEASUREMENT RUNNING", 500
     dst_ip = dst.split(":")[0]
     src_ip = src.split(":")[0]
 
     if cleanup_tcp(src_ip, dst_ip, measurement):
-        measurements.pop(measurement, None)
+        measurements.pop("tcp" + ';' + src + ';' + dst, None)
+        print measurements
         return "MEASUREMENT SUCCESSFULLY DELETED"
     else:
         return "THERE WERE ERRORS DURING DELETING MEASUREMENT", 500
@@ -155,11 +166,15 @@ def cleanup_tcp(src_ip, dst_ip, measurement_id):
 @app.route('/icmp/<src>/<dst>', methods=["DELETE"])
 def icmp_delete(src, dst):
     global measurements
-    measurement = measurements["icmp" + ';' + src + ';' + dst]
+    try:
+        measurement = measurements["icmp" + ';' + src + ';' + dst]
+    except:
+        return "THERE IS NO SUCH MEASUREMENT RUNNING", 500
     src_ip = src.split(":")[0]
 
     if cleanup_icmp(src_ip, measurement):
-        measurements.pop(measurement, None)
+        measurements.pop("icmp" + ';' + src + ';' + dst, None)
+        print measurements
         return "MEASUREMENT SUCCESSFULLY DELETED"
     else:
         return "THERE WERE ERRORS DURING DELETING MEASUREMENT", 500
@@ -221,6 +236,7 @@ def udp(src, dst, measurement_type, measurement_section):
         elif measurement_section == "two_way":
             return handleResultData(measurement_type, receiver_time, sender_time), 200
 
+        print measurements
         return 'NOT SUPPORTED MEASUREMENT TYPE', 500
     except:
         cleanup_udp(src_ip, dst_ip, measurement_id)
@@ -255,6 +271,7 @@ def tcp(src, dst, measurement_type):
     try:
         server_time = json.loads(server_response.text)
         client_time = json.loads(client_response.text)
+        print measurements
         return handleResultData(measurement_type, server_time, client_time), 200
 
     except:
@@ -308,6 +325,7 @@ def icmp(src, dst, measurement_type, measurement_section):
         elif measurement_section == "two_way":
             return handleResultData(measurement_type, receiver_time, sender_time), 200
 
+        print measurements
         return 'NOT SUPPORTED MEASUREMENT TYPE', 500
     except:
         cleanup_udp(src_ip, dst_ip, measurement_id)
