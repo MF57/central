@@ -7,7 +7,7 @@ Requirements:
  should have netprobe application (https://github.com/Ugon/netprobe) running
  <br>Note: one host can have both central and netprobe app running
 - it is assumed that connection between hosts is assured
-- clock between all of hosts HAS TO be synchronized, ie. using ntp (see: https://help.ubuntu.com/lts/serverguide/NTP.html)
+- clock between all of hosts HAS TO be synchronized, ie. using ntp (see: https://help.ubuntu.com/lts/serverguide/NTP.html, https://ubuntuforums.org/showthread.php?t=862620)
 
 Central app is running on port 5005<br>
 Netprobe app is running on port 5000
