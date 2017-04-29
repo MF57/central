@@ -4,8 +4,6 @@ import uuid
 import json
 import operator
 
-
-
 app = Flask(__name__)
 
 # LOL xD
@@ -329,10 +327,19 @@ def icmp(src, dst, measurement_type, measurement_section):
         return "COULD NOT COMPUTE TIME FROM HOSTS RESPONSES", 500
 
 
+def find_by_sample_id(sample_id, data):
+    for d in data:
+        if d['sample_id'] == sample_id:
+            return d
+    return None
+
+
 def create_timestamps_diff(left_data, right_data):
     result = []
-    for (left, right) in zip(left_data, right_data):
-        result.append(left['timestamp']-right['timestamp'])
+    for left in left_data:
+        right = find_by_sample_id(left['sample_id'], right_data)
+        if right is not None:
+            result.append(left['timestamp'] - right['timestamp'])
     return result
 
 
