@@ -1,8 +1,10 @@
 import requests
 from flask import Flask
 import uuid
-import time
 import json
+import operator
+
+
 
 app = Flask(__name__)
 
@@ -328,7 +330,10 @@ def icmp(src, dst, measurement_type, measurement_section):
 
 
 def create_timestamps_diff(left_data, right_data):
-    return []
+    result = []
+    for (left, right) in zip(left_data, right_data):
+        result.append(left['timestamp']-right['timestamp'])
+    return result
 
 
 def handle_result_data(measurement_type, left_data, right_data):
@@ -336,8 +341,8 @@ def handle_result_data(measurement_type, left_data, right_data):
     if measurement_type == "all":
         return json.dumps(result_data)
     elif measurement_type.startswith("last"):
-        index = measurement_type[measurement_type.index('-') + 1:]
-        return json.dumps(result_data[int(index):]) if int(index) > len(result_data) else json.dumps(result_data)
+        index = len(result_data) - int(measurement_type[measurement_type.index('-') + 1:])
+        return json.dumps(result_data[int(index):]) if int(index) > 0 else json.dumps(result_data)
     elif measurement_type == "avg":
         return str(0) if len(result_data) == 0 else str(reduce(lambda x, y: x + y, result_data) / len(result_data))
     return "NOT SUPPORTED MEASUREMENT TYPE", 500
