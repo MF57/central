@@ -7,7 +7,7 @@ Requirements:
  should have netprobe application (https://github.com/Ugon/netprobe) running
  <br>Note: one host can have both central and netprobe app running
 - it is assumed that connection between hosts is assured
-- clock between all of hosts HAS TO be synchronized, ie. using ntp (see: https://help.ubuntu.com/lts/serverguide/NTP.html, https://ubuntuforums.org/showthread.php?t=862620)
+- clock between all of hosts HAS TO be synchronized, ie. using ntp (see: https://help.ubuntu.com/lts/serverguide/NTP.html, https://ubuntuforums.org/showthread.php?t=862620, netprobe-docs), otherwise, the results will be random (negative, close to 0, etc.)
 
 Central app is running on port 5005<br>
 Netprobe app is running on port 5000
@@ -108,8 +108,7 @@ DELETE http://<central_ip>:5005/<protocol>/<src>/<dst>
 **src** - ip:port of the host which is the source of measurement requests<br>
 **dst** - ip:port of the host which is the destination of measurement requests<br>
 
-This request will remove process of measuring. However the gathered data is still there, so it can be still get.
-Also starting new measurement for the same hosts again will be merged with the old data while queried.
+This request will remove process of measuring.
 
 Example:
 
