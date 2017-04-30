@@ -117,3 +117,12 @@ Example:
 curl -X DELETE \
   http://192.168.0.90:5005/udp/192.168.0.90:5001/192.168.0.91:5003
 ```
+
+## TroubleShooting
+
+If any of the requests fails, user will get HTTP 500 error.<br>
+Most of the times, error message will be provided what went wrong (ie. Measurement for given hosts already exist) <br>
+
+However if there is no error message and/or application is behaving weird:
+- restart central
+- restart netprobe application of hosts which were affected
