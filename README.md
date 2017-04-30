@@ -88,6 +88,13 @@ curl -X GET \
   http://0.0.0.0:5005/tcp/192.168.0.90:5001/192.168.0.91:5003/all
 ```
 
+Example response: 
+```
+[20, 25, 12, 23, 32, 10, 10, 10, 24]
+```
+
+where each number is delay in ms of each existing measurement request for queried measurement
+
 
 
 ## Deleting Measurements
