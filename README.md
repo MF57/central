@@ -9,8 +9,8 @@ Requirements:
 - it is assumed that connection between hosts is assured
 - clock between all of hosts HAS TO be synchronized, ie. using ntp (see: https://help.ubuntu.com/lts/serverguide/NTP.html, https://ubuntuforums.org/showthread.php?t=862620, netprobe-docs), otherwise, the results will be random (negative, close to 0, etc.)
 
-Central app is running on port 5005<br>
-Netprobe app is running on port 5000
+Central app is running on port 5005 by default<br>
+Netprobe app is running on port 5000 by default
 
 
 ## How to run
@@ -38,8 +38,10 @@ POST http://<central_ip>:5005/<protocol>/<src>/<dst>/<interval>
 **interval** - src will send 1 measurement request to dst each interval seconds
 
 After this request host src will start sending measurement requests to the dst host. It will do it until we delete the measurement.
-<br> Note: for given triplet: protocol;src;dst there can be only one measurement in the entire central app.
 For details about measurements of each protocol, go to the netprobe documentation.
+<br><br> 
+###<b>Note: for given triplet: protocol;src;dst (where src and dst are ip:port) there can be only one measurement in the entire central app.</b>
+
 
 Example:
 
